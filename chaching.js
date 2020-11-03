@@ -43,6 +43,8 @@ var chaChing = (function () {
             templateConfigs.push(config);
         });
 
+        console.log(templateConfigs);
+
         return templateConfigs;
     }
 
@@ -223,8 +225,8 @@ var chaChing = (function () {
 
         if(conditionalLoopRegex.test(config.html)){
             //TO-DO: Check for debug mode before writing out to console
-            console.log("Contains conditional loop regex").
-                customHTML = parseConditionalLoopElement(templateData,customHTML);
+            console.log("Contains conditional loop regex")
+                customHTML = parseConditionalLoopElement(config.data,config.html);
         }
 
         if(variableRegex.test(config.html)){
@@ -238,6 +240,7 @@ var chaChing = (function () {
         //find corresonding template
         var element = document.querySelector('#chaching-'+config.cache)
 
+        //Update Temp
         element.outerHTML = config.parsedHTML;
     }
 
@@ -258,14 +261,6 @@ var chaChing = (function () {
         var count = 0;
 
         while (matches = conditionalLoopRegex.exec(customHtml)) {
-
-            //the regex is reset every loop, so that it is applied to the beginning of the string
-            //instead of at the end of the last match
-            if(!isNested){
-                conditionalLoopRegex = /(\$\[([\w\.]*\s*\:*\s*\w*\s*[\!\=]*\s*\w+[||*\s*\w*\s*[\!\=]*\s*\w+]*)\]([^]+?)\$\[\/\])/g;
-            }else{
-                conditionalLoopRegex = /(\$\[([\w\.]*\s*\:*\s*\w*\s*[\!\=]*\s*\w+[||*\s*\w*\s*[\!\=]*\s*\w+]*)\]([^]+?)\[\/\])/g;
-            }
 
             var replacementString = "";
 
@@ -336,6 +331,8 @@ var chaChing = (function () {
 
                 customHtml = customHtml.replace(conditionalLoopElement,replacementString);
             }
+
+            matches = 0;
 
         }
 
@@ -469,8 +466,6 @@ var chaChing = (function () {
                             matchingElements.push(nestedObject);
                         }
                     });
-
-
                 }
             });
         }else{
