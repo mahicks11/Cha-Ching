@@ -6,21 +6,25 @@
         $[postId==1]
             <p>${name}'s email is ${email}</p>
         $[/]
-        <h1>Greater Than</h1>
+        <h1>Not Equal</h1>
+        $[postId!=1]
+        <p>${name}'s email is ${email}</p>
+        $[/]
+        <h1>Greater Than 1</h1>
         $[id>1]
-            <p>${name}'s email is  greater than  ${email}</p>
+            <p>${name}'s id is ${id}</p>
         $[/]
-        <h1>Greater Than Or Equal to</h1>
+        <h1>Greater Than Or Equal to 1</h1>
         $[id>=1]
-            <p>${name}'s email is greater than or equal to ${email}</p>
+            <p>${name}'s id is ${id}</p>
         $[/]
-        <h1>Less Than</h1>
+        <h1>Less Than 2</h1>
         $[id<2]
-        <p>${name}'s email is greater than or equal to ${email}</p>
+        <p>${name}'s id is ${id}</p>
         $[/]
-        <h1>Less Than Or Equal to</h1>
+        <h1>Less Than Or Equal to 2</h1>
         $[id<=2]
-        <p>${name}'s email is greater than or equal to ${email}</p>
+        <p>${name}'s id is ${id}</p>
         $[/]
     </script>
 </body>
