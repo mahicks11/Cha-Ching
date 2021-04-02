@@ -1,4 +1,5 @@
 var chaChing = (function () {
+    "use strict";
 
     var chaChing = {};
 
@@ -26,7 +27,7 @@ var chaChing = (function () {
         var templateConfigs = [];
 
         templates.forEach(function(template,index){
-            var config ={};
+            var config ={...defaultConfig};
             config.debugMode = template.getAttribute("debugMode");
             config.dataSrc = template.getAttribute("data-src");
             config.rootPath = template.getAttribute("rootPath");
@@ -36,9 +37,6 @@ var chaChing = (function () {
             template.setAttribute("id","chaching-"+config.cache);
 
             config.data = getData(config);
-
-            //TO-DO - Merge the default config and template config correctly (e.g. dataSrc is being set to null)
-            Object.assign(defaultConfig,config);
 
             templateConfigs.push(config);
         });
@@ -218,6 +216,7 @@ var chaChing = (function () {
      */
     function parseCustomHtml(config){
         console.log("Parsing Custom HTML");
+        var customHTML;
         //Regex to parse our variables (TO-DO: needs to be globalized)
         var variableRegex = /\${(.*?)}(?![^]*(SAS\.DataTable|\[\/\]))/g;
         //Regex to parse looping elements (TO-DO: needs to be globalized)
@@ -232,7 +231,7 @@ var chaChing = (function () {
         if(variableRegex.test(config.html)){
             //TO-DO: Check for debug mode before writing out to console
             console.log("contains variable ")
-            customHTML = parseVariableElement(config.data,config.html,'');
+            customHTML = parseVariableElement(config.data,config.html);
         }
 
         config.parsedHTML = customHTML;
@@ -253,8 +252,8 @@ var chaChing = (function () {
      */
     function parseConditionalLoopElement(templateData,customHtml,isNested){
         console.log("parsing conditional element")
-        var nestedLoopRegex = /(\$\[([\w\.]*\s*\:*\s*\w*\s*[\!\=]*\s*\w+[||*\s*\w*\s*[\=\=]*\s*\w+]*)\]([^]+?)\[\/\])/g;
-        var outerLoopRegex = /(\$\[([\w\.]*\s*\:*\s*\w*\s*[\!\=]*\s*\w+[||*\s*\w*\s*[\=\=]*\s*\w+]*)\]([^]+?)\$\[\/\])/g;
+        var nestedLoopRegex = /(\$\[([\w\.]*\s*\:*\s*\w*\s*[\!\=]*\s*\w+[||*\s*\w*\s*[\!\=\=><]*\s*\w+]*)\]([^]+?)\[\/\])/g;
+        var outerLoopRegex = /(\$\[([\w\.]*\s*\:*\s*\w*\s*[\!\=]*\s*\w+[||*\s*\w*\s*[\!\=\=><]*\s*\w+]*)\]([^]+?)\$\[\/\])/g;
         var variableRegex = /\${(.*?)}(?![^]*(SAS\.DataTable|\[\/\]))/g;
         var conditionalLoopRegex = (!isNested) ? outerLoopRegex : nestedLoopRegex;
         var matches;
@@ -278,10 +277,12 @@ var chaChing = (function () {
                 condition = conditionalLoopClause.split(":")[1] ;
             }else{
                 //if it only contains condition, then set the condition
-                if(conditionalLoopClause.indexOf("==") > -1){
-                    objectPath = '';
-                    condition = conditionalLoopClause;
-                }else if(conditionalLoopClause.indexOf("!=") > -1){
+                if(conditionalLoopClause.indexOf("!=") >= 0
+                           || conditionalLoopClause.indexOf("==") >= 0
+                           || conditionalLoopClause.indexOf("<") >= 0
+                           || conditionalLoopClause.indexOf(">") >= 0
+                           || conditionalLoopClause.indexOf(">=") >= 0
+                           || conditionalLoopClause.indexOf("<=") >= 0){
                     objectPath = '';
                     condition = conditionalLoopClause;
                 }else{
@@ -322,7 +323,7 @@ var chaChing = (function () {
                     }
 
                     if(containsVariables){
-                        replacementString += parseVariableElement(obj,parsingContent,'display');
+                        replacementString += parseVariableElement(obj,parsingContent);
                     }else{
                         replacementString += parsingContent;
                     }
@@ -396,7 +397,12 @@ var chaChing = (function () {
             return [];
         }
 
-        if(condition.indexOf("!=") >= 0 || condition.indexOf("==") >= 0){
+        if(condition.indexOf("!=") >= 0
+        || condition.indexOf("==") >= 0
+        || condition.indexOf("<") >= 0
+        || condition.indexOf(">") >= 0
+        || condition.indexOf(">=") >= 0
+        || condition.indexOf("<=") >= 0){
             return dataMatchingCondition(data, condition);
         }
     }
@@ -432,53 +438,178 @@ var chaChing = (function () {
     }
 
     /**
-     * Evaluates the equals(==) or notEquals (!= or !==) operator for conditional loop elements
+     * Evaluates the logical operators for conditional loop elements
      * @param data
      * @param condition
      * @returns {[]}
      */
     function dataMatchingCondition(data,condition){
+        console.log("Matching Conditions");
+        console.log("data");
+        console.log(data);
+        console.log("condiiton: "+ condition);
+
         var matchingElements = [];
         var notequals = condition.indexOf("!=") >= 0;  //can only have one not-equals, not usable in compounds
 
         var EQUALS_REGEX = /[a-zA-Z0-9\s\w_]+==[a-zA-Z0-9\s\w_]+/g;
+        var COMPARE_REGEX = /[a-zA-Z0-9\s\w_]+[><]+[=]?[a-zA-Z0-9\s\w_]+/g;
+
         var localcondition = condition.replace("!==","==").replace("!=", "==");
+
+        console.log("local condition: " + localcondition);
 
         if(Array.isArray(data)){
             data.forEach(function(nestedObject,index){
                 if(Array.isArray(nestedObject)){
                     nestedObject.forEach(function(object,index){
-                        localcondition.match(EQUALS_REGEX).forEach(function(predicate,index){
-                            var key = predicate.split("==")[0].trim();
-                            var value = predicate.split("==")[1].trim();
-                            if(typeof object[key] !== 'undefined' && xor(object[key].toString()==value,notequals)){
-                                matchingElements.push(object);
-                            }
-                        });
+                        if(localcondition.match(EQUALS_REGEX)){
+                            localcondition.match(EQUALS_REGEX).forEach(function(predicate,index){
+                                var key = predicate.split("==")[0].trim();
+                                var value = predicate.split("==")[1].trim();
+                                if(typeof object[key] !== 'undefined' && xor(object[key].toString()==value,notequals)){
+                                    matchingElements.push(object);
+                                }
+                            });
+                        }else if(localcondition.match(COMPARE_REGEX)){
+                            localcondition.match(COMPARE_REGEX).forEach(function(predicate,index){
+
+                                var COMPARE_EXPRESSION = /[<>=]+/g;
+                                let operator = predicate.match(COMPARE_EXPRESSION);
+
+                                var key = predicate.split(operator)[0].trim();
+                                var value = predicate.split(operator)[1].trim();
+
+                                if(operator==">"){
+                                    if(typeof object[key] !== 'undefined'
+                                    && object[key] > parseFloat(value)){
+                                        console.log(object);
+                                        matchingElements.push(object);
+                                    }
+                                }else if(operator=="<"){
+                                      if(typeof object[key] !== 'undefined'
+                                      && object[key] < parseFloat(value)){
+                                          console.log(object);
+                                          matchingElements.push(object);
+                                      }
+                                }else if(operator==">="){
+                                   if(typeof object[key] !== 'undefined'
+                                   && object[key] >= parseFloat(value)){
+                                       console.log(object);
+                                       matchingElements.push(object);
+                                   }
+                                }else if(operator=="<="){
+                                    console.log("greather than")
+                                    if(typeof object[key] !== 'undefined'
+                                    && object[key] <= parseFloat(value)){
+                                        console.log(object);
+                                        matchingElements.push(object);
+                                    }
+                                }
+
+
+                            });
+                        }
+
 
                     });
                 }else{
-                    localcondition.match(EQUALS_REGEX).forEach(function(predicate,index){
-                        var key = predicate.split("==")[0].trim();
-                        var value = predicate.split("==")[1].trim();
+                    if(localcondition.match(EQUALS_REGEX)){
+                        localcondition.match(EQUALS_REGEX).forEach(function(predicate,index){
+                            var key = predicate.split("==")[0].trim();
+                            var value = predicate.split("==")[1].trim();
+                            if(typeof nestedObject[key] !== 'undefined' && xor(nestedObject[key].toString()==value,notequals)){
+                                matchingElements.push(nestedObject);
+                            }
+                        });
+                    }else if(localcondition.match(COMPARE_REGEX)){
+                        localcondition.match(COMPARE_REGEX).forEach(function(predicate,index){
 
-                        if(typeof nestedObject[key] !== 'undefined' && xor(nestedObject[key].toString()==value,notequals)){
-                            matchingElements.push(nestedObject);
-                        }
-                    });
+                            var COMPARE_EXPRESSION = /[<>=]+/g;
+                            let operator = predicate.match(COMPARE_EXPRESSION);
+
+                            var key = predicate.split(operator)[0].trim();
+                            var value = predicate.split(operator)[1].trim();
+
+                            if(operator==">"){
+                                if(typeof nestedObject[key] !== 'undefined'
+                                && nestedObject[key] > parseFloat(value)){
+                                    console.log(nestedObject);
+                                    matchingElements.push(nestedObject);
+                                }
+                            }else if(operator=="<"){
+                                  if(typeof nestedObject[key] !== 'undefined'
+                                  && nestedObject[key] < parseFloat(value)){
+                                      console.log(nestedObject);
+                                      matchingElements.push(nestedObject);
+                                  }
+                            }else if(operator==">="){
+                               if(typeof nestedObject[key] !== 'undefined'
+                               && nestedObject[key] >= parseFloat(value)){
+                                   console.log(nestedObject);
+                                   matchingElements.push(nestedObject);
+                               }
+                            }else if(operator=="<="){
+                                console.log("greather than")
+                                if(typeof nestedObject[key] !== 'undefined'
+                                && nestedObject[key] <= parseFloat(value)){
+                                    console.log(nestedObject);
+                                    matchingElements.push(nestedObject);
+                                }
+                            }
+
+
+                        });
+                    }
                 }
             });
         }else{
-            condition.match(EQUALS_REGEX).forEach(function(predicate,index){
-                var key = predicate.split("==")[0].trim();
-                var value = predicate.split("==")[1].trim();
+            if(condition.match(EQUALS_REGEX)){
+                condition.match(EQUALS_REGEX).forEach(function(predicate,index){
+                    var key = predicate.split("==")[0].trim();
+                    var value = predicate.split("==")[1].trim();
 
-                if(data[key].toString()===value){
-                    matchingElements.push(data);
-                }
+                    if(data[key].toString()===value){
+                        matchingElements.push(data);
+                    }
+                });
+            }else if(condition.match(COMPARE_REGEX)){
+                condition.match(COMPARE_REGEX).forEach(function(predicate,index){
+                    var COMPARE_EXPRESSION = /[<>=]+/g;
+                    let operator = predicate.match(COMPARE_EXPRESSION);
 
-            });
+                    var key = predicate.split(operator)[0].trim();
+                    var value = predicate.split(operator)[1].trim();
 
+                    if(operator==">"){
+                        if(typeof data[key] !== 'undefined'
+                        && data[key] > parseFloat(value)){
+                            console.log(data);
+                            matchingElements.push(data);
+                        }
+                    }else if(operator=="<"){
+                          if(typeof data[key] !== 'undefined'
+                          && data[key] < parseFloat(value)){
+                              console.log(data);
+                              matchingElements.push(data);
+                          }
+                    }else if(operator==">="){
+                       if(typeof data[key] !== 'undefined'
+                       && data[key] >= parseFloat(value)){
+                           console.log(data);
+                           matchingElements.push(data);
+                       }
+                    }else if(operator=="<="){
+                        console.log("greather than")
+                        if(typeof data[key] !== 'undefined'
+                        && data[key] <= parseFloat(value)){
+                            console.log(data);
+                            matchingElements.push(data);
+                        }
+                    }
+
+                });
+            }
         }
 
         return matchingElements;
@@ -491,7 +622,7 @@ var chaChing = (function () {
      * @param type
      * @returns {string|*}
      */
-    function parseVariableElement(templateData,customHtml,type){
+    function parseVariableElement(templateData,customHtml){
         console.log("parsing variable element");
         if(typeof(templateData)=="undefined" || !templateData){
             console.log("data undefined")
@@ -533,9 +664,7 @@ var chaChing = (function () {
 
             sortString = propertyValue;
             /* if datetime format provided, attempt to use it, else default to blank so defaultValue potentially used */
-            if (dateTimeFormat.length > 0 && typeof propertyValue === "string" && typeof moment !== 'undefined') {
-                moment.locale(document.documentElement.lang || window.navigator.language || 'en');
-                var date = moment(propertyValue.replace(" ",""));
+            if (dateTimeFormat.length > 0 && typeof propertyValue === "string") {
                 propertyValue = (date._isValid) ? date.format(dateTimeFormat) : "";
                 sortString = date.format('YYYYMMDD');
                 templateData[property + "_sort"] = sortString;
@@ -543,11 +672,6 @@ var chaChing = (function () {
             replacementString = (propertyValue) ? propertyValue : defaultValue;
             customHtml = customHtml.replace(variable,replacementString);
         });
-
-        if (type == 'sort' || type == 'type') {
-            console.log("sort string: " + sortString);
-            return sortString;
-        }
 
         console.log("custom HTML: " + customHtml)
         return customHtml;

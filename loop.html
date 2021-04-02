@@ -2,8 +2,25 @@
 <head></head>
 <body>
     <script type="chaching-template" data-src="https://jsonplaceholder.typicode.com/comments?postId=1">
+        <h1>Equals</h1>
         $[postId==1]
             <p>${name}'s email is ${email}</p>
+        $[/]
+        <h1>Greater Than</h1>
+        $[id>1]
+            <p>${name}'s email is  greater than  ${email}</p>
+        $[/]
+        <h1>Greater Than Or Equal to</h1>
+        $[id>=1]
+            <p>${name}'s email is greater than or equal to ${email}</p>
+        $[/]
+        <h1>Less Than</h1>
+        $[id<2]
+        <p>${name}'s email is greater than or equal to ${email}</p>
+        $[/]
+        <h1>Less Than Or Equal to</h1>
+        $[id<=2]
+        <p>${name}'s email is greater than or equal to ${email}</p>
         $[/]
     </script>
 </body>
