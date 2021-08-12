@@ -1,0 +1,33 @@
+{
+  "name": "cha-ching",
+  "version": "1.0.0",
+  "description": "Cha-Ching is template language designed.",
+  "main": "chaching.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mahicks11/Cha-Ching.git"
+  },
+  "keywords": [
+    "chaching",
+    "template"
+  ],
+  "author": "Marcus Hicks",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mahicks11/Cha-Ching/issues"
+  },
+  "homepage": "https://github.com/mahicks11/Cha-Ching#readme",
+  "devDependencies": {
+    "gulp": "^4.0.2"
+  },
+  "dependencies": {
+    "google-closure-compiler": "^20210601.0.0",
+    "uglify-js": "^3.14.1"
+  }
+}
